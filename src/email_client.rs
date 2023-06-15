@@ -1,15 +1,16 @@
 use reqwest::Client;
 
+use crate::configuration::EmailBaseUrl;
 use crate::domain::SubscriberEmail;
 
 pub struct EmailClient {
-    base_url: String,
+    base_url: EmailBaseUrl,
     http_client: Client,
     sender: SubscriberEmail,
 }
 
 impl EmailClient {
-    pub fn new(base_url: String, sender: SubscriberEmail) -> Self {
+    pub fn new(base_url: EmailBaseUrl, sender: SubscriberEmail) -> Self {
         Self {
             base_url,
             http_client: Client::new(),
@@ -36,6 +37,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
     use wiremock::matchers::any;
 
+    use crate::configuration::EmailBaseUrl;
     use crate::domain::SubscriberEmail;
     use crate::email_client::EmailClient;
 
@@ -43,7 +45,8 @@ mod tests {
     async fn send_email_fires_a_request_to_base_url() {
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClient::new(mock_server.uri(), sender);
+        let mock_base_url = EmailBaseUrl::try_from(mock_server.uri()).expect("Couldn't convert URI.");
+        let email_client = EmailClient::new(mock_base_url, sender);
 
         Mock::given(any())
             .respond_with(ResponseTemplate::new(200))
