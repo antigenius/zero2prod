@@ -42,7 +42,8 @@ async fn spawn_app() -> TestApp {
     let sender_email = config.email_client.sender().expect("msnvalid sender email address.");
     let email_client = EmailClient::new(
         config.email_client.base_url,
-        sender_email
+        sender_email,
+        config.email_client.auth_token
     );
 
     let server = run(listener, pool.clone(), email_client)

@@ -18,6 +18,12 @@ pub struct Settings {
 
 pub struct EmailBaseUrl(reqwest::Url);
 
+impl AsRef<reqwest::Url> for EmailBaseUrl {
+    fn as_ref(&self) -> &reqwest::Url {
+        &self.0
+    }
+}
+
 impl TryFrom<String> for EmailBaseUrl {
     type Error = String;
 
@@ -32,7 +38,8 @@ impl TryFrom<String> for EmailBaseUrl {
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
     pub base_url: EmailBaseUrl,
-    pub sender_email: String
+    pub sender_email: String,
+    pub auth_token: Secret<String>,
 }
 
 impl EmailClientSettings {
@@ -82,7 +89,7 @@ impl DatabaseSettings {
         PgConnectOptions::new()
             .host(&self.host)
             .username(&self.username)
-            .password(&self.password.expose_secret())
+            .password(self.password.expose_secret())
             .port(self.port)
             .ssl_mode(ssl_mode)
     }

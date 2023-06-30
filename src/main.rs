@@ -23,6 +23,7 @@ async fn main() -> Result<(), std::io::Error> {
     let email_client = EmailClient::new(
         config.email_client.base_url,
         send_email,
+        config.email_client.auth_token,
     );
 
     let address = format!("{}:{}", config.application.host, config.application.port);
