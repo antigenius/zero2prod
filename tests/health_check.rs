@@ -40,10 +40,12 @@ async fn spawn_app() -> TestApp {
     let pool = configure_database(&config.database).await;
 
     let sender_email = config.email_client.sender().expect("msnvalid sender email address.");
+    let timeout = config.email_client.timeout();
     let email_client = EmailClient::new(
         config.email_client.base_url,
         sender_email,
-        config.email_client.auth_token
+        config.email_client.auth_token,
+        timeout
     );
 
     let server = run(listener, pool.clone(), email_client)

@@ -35,19 +35,6 @@ impl TryFrom<String> for EmailBaseUrl {
     }
 }
 
-#[derive(serde::Deserialize)]
-pub struct EmailClientSettings {
-    pub base_url: EmailBaseUrl,
-    pub sender_email: String,
-    pub auth_token: Secret<String>,
-}
-
-impl EmailClientSettings {
-    pub fn sender(&self) -> Result<SubscriberEmail, String> {
-        SubscriberEmail::parse(self.sender_email.clone())
-    }
-}
-
 impl<'de> Deserialize<'de> for EmailBaseUrl {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
@@ -57,6 +44,24 @@ impl<'de> Deserialize<'de> for EmailBaseUrl {
                     Ok(url) => Ok(EmailBaseUrl(url)),
                     Err(_) => Err(serde::de::Error::custom("Unable to convert string to rqwest::Url."))
                 }
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub base_url: EmailBaseUrl,
+    pub sender_email: String,
+    pub auth_token: Secret<String>,
+    pub timeout_milliseconds: u64,
+}
+
+impl EmailClientSettings {
+    pub fn sender(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender_email.clone())
+    }
+
+    pub fn timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.timeout_milliseconds)
     }
 }
 

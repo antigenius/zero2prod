@@ -20,10 +20,12 @@ async fn main() -> Result<(), std::io::Error> {
         .connect_lazy_with(config.database.with_db());
 
     let send_email = config.email_client.sender().expect("Invalid sender email address.");
+    let timeout = config.email_client.timeout();
     let email_client = EmailClient::new(
         config.email_client.base_url,
         send_email,
         config.email_client.auth_token,
+        timeout,
     );
 
     let address = format!("{}:{}", config.application.host, config.application.port);
