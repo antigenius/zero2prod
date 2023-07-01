@@ -9,7 +9,6 @@ use zero2prod::email_client::EmailClient;
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
-
 static TRACING: Lazy<()> = Lazy::new(|| {
     let level = "into".to_string();
     let name = "test".to_string();
@@ -35,21 +34,23 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let mut config = get_configuration().expect("Faild to read configuration.");
+    let mut config = get_configuration().expect("Failed to read configuration.");
     config.database.database_name = Uuid::new_v4().to_string();
     let pool = configure_database(&config.database).await;
 
-    let sender_email = config.email_client.sender().expect("msnvalid sender email address.");
+    let sender_email = config
+        .email_client
+        .sender()
+        .expect("msnvalid sender email address.");
     let timeout = config.email_client.timeout();
     let email_client = EmailClient::new(
         config.email_client.base_url,
         sender_email,
         config.email_client.auth_token,
-        timeout
+        timeout,
     );
 
-    let server = run(listener, pool.clone(), email_client)
-        .expect("Failed to bind address$");
+    let server = run(listener, pool.clone(), email_client).expect("Failed to bind address$");
     let _ = tokio::spawn(server);
 
     TestApp {
