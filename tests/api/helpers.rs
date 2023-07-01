@@ -3,7 +3,7 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
-use zero2prod::startup::{Application, get_connection_pool};
+use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -24,6 +24,18 @@ pub struct TestApp {
     pub db_pool: PgPool,
 }
 
+impl TestApp {
+    pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/subscriptions", &self.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+}
+
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
@@ -36,13 +48,15 @@ pub async fn spawn_app() -> TestApp {
 
     configure_database(&config.database).await;
 
-    let app = Application::build(config.clone()).await.expect("Failed to build application.");
+    let app = Application::build(config.clone())
+        .await
+        .expect("Failed to build application.");
     let address = format!("http://127.0.0.1:{}", app.port());
     let _ = tokio::spawn(app.run_until_stopped());
 
     TestApp {
         address,
-        db_pool: get_connection_pool(&config.database)
+        db_pool: get_connection_pool(&config.database),
     }
 }
 
