@@ -35,7 +35,7 @@ pub async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let mut config = get_configuration().expect("Faild to read configuration.");
+    let mut config = get_configuration().expect("Failed to read configuration.");
     config.database.database_name = Uuid::new_v4().to_string();
     let pool = configure_database(&config.database).await;
 
