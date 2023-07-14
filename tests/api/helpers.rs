@@ -7,6 +7,7 @@ use zero2prod::configuration::{get_configuration, DatabaseSettings, EmailBaseUrl
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
+
 static TRACING: Lazy<()> = Lazy::new(|| {
     let level = "into".to_string();
     let name = "test".to_string();
