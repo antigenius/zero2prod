@@ -1,9 +1,7 @@
-use actix_web::rt::spawn;
 use wiremock::{Mock, ResponseTemplate};
 use wiremock::matchers::{any, method, path};
 
 use crate::helpers::{spawn_app, TestApp, ConfirmationLinks};
-
 
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
@@ -56,20 +54,14 @@ async fn newsletters_not_deliever_to_unconfirmed_subscribers() {
             "text": "Newsletter body as plain text",
         }
     });
-    let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", &app.address))
-        .json(&newsletter_request_body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
+    let response = app.post_newsletter(newsletter_request_body).await;
     assert_eq!(response.status().as_u16(), 200);
 }
 
 #[tokio::test]
 async fn newsletters_deliver_to_confirmed_subscribers() {
     let app = spawn_app().await;
-    create_confirmed_subscriber(&app);
+    create_confirmed_subscriber(&app).await;
 
     Mock::given(path("/email"))
         .and(method("POST"))
@@ -85,12 +77,37 @@ async fn newsletters_deliver_to_confirmed_subscribers() {
             "text": "Newsletter body as plain text",
         }
     });
-    let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", &app.address))
-        .json(&newsletter_request_body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
+    let response = app.post_newsletter(newsletter_request_body).await;
     assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn newsltters_return_400_for_invalid_data() {
+    let app = spawn_app().await;
+    let test_cases = vec![
+        (
+            serde_json::json!({
+                "content": {
+                    "text": "Newsletter body as plain text",
+                    "html": "<p>Newsletter body as HTML</p>",
+                }
+            }),
+            "missing title",
+        ),
+        (
+            serde_json::json!({"title": "Newsletter!"}),
+            "missing content",
+        ),
+    ];
+
+    for (invalid_body, error_message) in test_cases {
+        let response = app.post_newsletter(invalid_body).await;
+
+        assert_eq!(
+            response.status().as_u16(),
+            400,
+            "The API did not failed with 400 Bad Request when the payload as {}",
+            error_message
+        );
+    }
 }
