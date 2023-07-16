@@ -1,11 +1,12 @@
+use actix_web::rt::spawn;
 use wiremock::{Mock, ResponseTemplate};
 use wiremock::matchers::{any, method, path};
 
-use crate::helpers::{spawn_app, TestApp};
+use crate::helpers::{spawn_app, TestApp, ConfirmationLinks};
 
 
 
-async fn create_unconfirmed_subscriber(app: &TestApp) {
+async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let _mock_guard = Mock::given(path("/email"))
         .and(method("POST"))
@@ -18,6 +19,23 @@ async fn create_unconfirmed_subscriber(app: &TestApp) {
     .await
     .error_for_status()
     .unwrap();
+    let email_request = &app
+        .email_server
+        .received_requests()
+        .await
+        .unwrap()
+        .pop()
+        .unwrap();
+    app.get_confirmation_links(&email_request)
+}
+
+async fn create_confirmed_subscriber(app: &TestApp) {
+    let confirmation_links = create_unconfirmed_subscriber(app).await;
+    reqwest::get(confirmation_links.html)
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -28,6 +46,35 @@ async fn newsletters_not_deliever_to_unconfirmed_subscribers() {
     Mock::given(any())
         .respond_with(ResponseTemplate::new(200))
         .expect(0)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter TItle",
+        "content": {
+            "html": "<p>Newsletter body as HTML</p>",
+            "text": "Newsletter body as plain text",
+        }
+    });
+    let response = reqwest::Client::new()
+        .post(&format!("{}/newsletters", &app.address))
+        .json(&newsletter_request_body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn newsletters_deliver_to_confirmed_subscribers() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app);
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
         .mount(&app.email_server)
         .await;
 
