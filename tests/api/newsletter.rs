@@ -48,7 +48,7 @@ async fn newsletters_not_deliever_to_unconfirmed_subscribers() {
         .await;
 
     let newsletter_request_body = serde_json::json!({
-        "title": "Newsletter TItle",
+        "title": "Newsletter Title",
         "content": {
             "html": "<p>Newsletter body as HTML</p>",
             "text": "Newsletter body as plain text",
@@ -110,4 +110,25 @@ async fn newsltters_return_400_for_invalid_data() {
             error_message
         );
     }
+}
+
+#[tokio::test]
+async fn requests_missing_auth_are_rejected() {
+    let app = spawn_app().await;
+
+    let response = reqwest::Client::new()
+        .post(&format!("{}/newsletter", &app.address))
+        .json(&serde_json::json!({
+            "content": {
+                "html": "<p>Newsletter body as HTML</p>",
+                "text": "Newsletter body as plain text",
+            },
+            "title": "Newsletter title",
+        }))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(401, response.status().as_u16());
+    assert_eq!(r#"Basic realm="publish""#, response.headers()["WWW-Authenticate"]);
 }

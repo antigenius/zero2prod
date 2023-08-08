@@ -12,12 +12,15 @@ name = "zero2prod"
 
 [dependencies]
 actix-web = "4"
+anyhow = "1"
+base64 = "0.21"
 chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
 config = "0.13"
 rand = { version = "0.8", features = ["std_rng"] }
 secrecy = { version = "0.8", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde-aux = "4"
+thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1", features = ["log"] }
 tracing-bunyan-formatter = "0.3"
@@ -27,8 +30,6 @@ tracing-actix-web = "0.7"
 uuid = { version = "1", features = ["v4"] }
 unicode-segmentation = "1.10.1"
 validator = "0.16"
-thiserror = "1"
-anyhow = "1"
 
 [dependencies.reqwest]
 version = "0.11"
