@@ -1,8 +1,9 @@
 use actix_web::{HttpRequest, HttpResponse, ResponseError, web};
 use actix_web::http::{header, StatusCode};
 use actix_web::http::header::{HeaderMap, HeaderValue};
-use base64::Engine;
+use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use anyhow::Context;
+use base64::Engine;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
 
@@ -103,33 +104,48 @@ fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Erro
 }
 
 async fn validate_credentials(
-    credenitals: Credentials,
+    credentials: Credentials,
     pool: &PgPool,
 ) -> Result<uuid::Uuid, PublishError> {
-    let user_id: Option<_> = sqlx::query!(
+    let row: Option<_> = sqlx::query!(
         r#"
         SELECT
-            id
+            id,
+            password_hash
         
         FROM
             person
         
         WHERE
             username = $1
-            AND password = $2
         "#,
-        credenitals.username,
-        credenitals.password.expose_secret()
+        credentials.username,
     )
     .fetch_optional(pool)
     .await
-    .context("Failed to perform a query to validate auth credntias.")
+    .context("Failed to execute query retrieving credentials.")
     .map_err(PublishError::UnexpectedError)?;
 
-    user_id
-        .map(|row| row.id)
-        .ok_or_else(|| anyhow::anyhow!("Invalid username or password."))
-        .map_err(PublishError::AuthError)
+    let (user_id, expected_hash) = match row {
+        Some(row) => (row.id, row.password_hash),
+        None => {
+            return Err(PublishError::AuthError(anyhow::anyhow!("Unknown username.")));
+        }
+    };
+
+    let expected_hash = PasswordHash::new(&expected_hash)
+        .context("Failed to parse PHC format hash string.").
+        map_err(PublishError::UnexpectedError)?;
+    
+    Argon2::default()
+        .verify_password(
+            credentials.password.expose_secret().as_bytes(),
+            &expected_hash
+        )
+        .context("Invalid password.")
+        .map_err(PublishError::AuthError)?;
+    
+    Ok(user_id)
 }
 
 #[tracing::instrument(
