@@ -40,7 +40,7 @@ urlencoding = "2"
 [dependencies.reqwest]
 version = "0.11"
 default-features = false
-features = ["json", "rustls-tls"]
+features = ["cookies", "json", "rustls-tls"]
 
 [dependencies.sqlx]
 version = "0.6"
