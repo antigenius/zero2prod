@@ -40,7 +40,7 @@ impl TestUser {
         Self {
             id: Uuid::new_v4(),
             username: Uuid::new_v4().to_string(),
-            password: Uuid::new_v4().to_string(),
+            password: "pass".into(),
         }
     }
 
