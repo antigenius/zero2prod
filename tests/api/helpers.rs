@@ -131,15 +131,32 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn get_login_html(&self) -> String {
+    async fn get_path(&self, path: &str) -> reqwest::Response {
         self.api_client
-            .get(&format!("{}/login", &self.address))
+            .get(&format!("{}{}", &self.address, path))
             .send()
             .await
-            .expect("Failed to execute request.")
+            .expect(&format!("Failed to execute request: GET {}", path))
+    }
+
+    async fn get_path_html(&self, path: &str) -> String {
+        self.get_path(path)
+            .await
             .text()
             .await
             .unwrap()
+    }
+
+    pub async fn get_login_html(&self) -> String {
+        self.get_path_html("/login").await
+    }
+
+    pub async fn get_admin_dashboard(&self) -> reqwest::Response {
+        self.get_path("/admin/dashboard").await
+    }
+
+    pub async fn get_admin_dashboard_html(&self) -> String {
+        self.get_path_html("/admin/dashboard").await
     }
 }
 
