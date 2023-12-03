@@ -33,6 +33,7 @@ uuid = { version = "1", features = ["v4"] }
 unicode-segmentation = "1.10.1"
 validator = "0.16"
 urlencoding = "2"
+actix-web-flash-messages = { version = "0.4", features = ["cookies"] }
 
 [dependencies.reqwest]
 version = "0.11"
