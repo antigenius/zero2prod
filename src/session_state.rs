@@ -19,7 +19,11 @@ impl TypedSession {
     }
 
     pub fn renew(&self) {
-        self.0.renew();
+        self.0.renew()
+    }
+
+    pub fn logout(&self) {
+        self.0.purge()
     }
 }
 
