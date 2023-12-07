@@ -45,11 +45,13 @@ async fn new_password_fields_must_match() {
         "new_password": &new_pass,
         "new_password_check": &different_new_pass,
     });
-    let response =app.post_change_password(&payload).await;
+    let response = app.post_change_password(&payload).await;
 
     assert_is_redirected_to(&response, "/admin/password");
 
     let html = app.get_change_password_html().await;
+
+    println!("HTML is: {}", html);
 
     assert!(html.contains("<p><i>Password fields must match.</i></p>"));
 }
