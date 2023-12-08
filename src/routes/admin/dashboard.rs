@@ -60,6 +60,7 @@ pub async fn dashboard(
     <p>Available actions:</p>
     <ol>
         <li><a href="/admin/password">Change Password</a></li>
+        <li><a href="/admin/newsletter">Publish Newsletter</a></li>
         <li>
             <form name="logoutForm" action="/admin/logout" method="post">
                 <input type="submit" value="Logout" />

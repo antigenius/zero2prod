@@ -109,16 +109,6 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn post_newsletter(&self, body: serde_json::Value) -> reqwest::Response {
-        self.api_client
-            .post(&format!("{}/newsletter", &self.address))
-            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
-            .json(&body)
-            .send()
-            .await
-            .expect("Failed to execute request.")
-    }
-
     async fn post_form<Body>(&self, path: &str, body: &Body) -> reqwest::Response 
     where
         Body: serde::Serialize,
@@ -174,11 +164,22 @@ impl TestApp {
         self.get_path_html("/admin/password").await
     }
 
+    pub async fn get_publish_newsletter_form(&self) -> reqwest::Response {
+        self.get_path("/admin/newsletter").await
+    }
+
     pub async fn post_change_password<Body>(&self, body: &Body) -> reqwest::Response
     where
         Body: serde::Serialize,
     {
         self.post_form("/admin/password", body).await
+    }
+
+    pub async fn post_newsletter<Body>(&self, body: &Body) -> reqwest::Response 
+    where
+        Body: serde::Serialize,
+    {
+        self.post_form("/admin/newsletter", body).await
     }
 
     pub async fn post_logout(&self) -> reqwest::Response {

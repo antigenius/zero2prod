@@ -25,6 +25,7 @@ use crate::routes::{
     home,
     logout,
     publish_newsletter,
+    publish_newsletter_form,
     subscribe,
     login,
     login_form
@@ -103,11 +104,12 @@ async fn run(
             .route("/login", web::post().to(login))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
-            .route("/newsletter", web::post().to(publish_newsletter))
             .service(
                 web::scope("/admin")
                     .wrap(from_fn(reject_anonymous_users))
                         .route("/dashboard", web::get().to(dashboard))
+                        .route("/newsletter", web::get().to(publish_newsletter_form))
+                        .route("/newsletter", web::post().to(publish_newsletter))
                         .route("/password", web::get().to(change_password_form))
                         .route("/password", web::post().to(change_password))
                         .route("/logout", web::post().to(logout))
