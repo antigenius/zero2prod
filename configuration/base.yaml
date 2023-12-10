@@ -8,8 +8,9 @@ database:
   password: "password"
   database_name: "newsletter"
 email_client:
-  base_url: "http://localhost"
-  sender_email: "test@gmail.com"
-  auth_token: "secret"
-  timeout_milliseconds: 10000
+  host: "localhost"
+  port: 1025
+  sender: "foo@bar.com"
+  username: "doesnot"
+  password: "matter"
 redis_uri: "redis://127.0.0.1:6379"

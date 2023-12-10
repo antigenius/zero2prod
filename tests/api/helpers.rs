@@ -5,7 +5,7 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
 
-use zero2prod::configuration::{get_configuration, DatabaseSettings, EmailBaseUrl};
+use zero2prod::configuration::{DatabaseSettings, get_configuration};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -199,8 +199,6 @@ pub async fn spawn_app() -> TestApp {
         let mut c = get_configuration().expect("Failed to read configuration.");
         c.database.database_name = Uuid::new_v4().to_string();
         c.application.port = 0;
-        c.email_client.base_url =
-            EmailBaseUrl::try_from(email_server.uri()).expect("Couldn't convert URI");
         c
     };
 

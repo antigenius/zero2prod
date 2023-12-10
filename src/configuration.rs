@@ -54,19 +54,15 @@ impl<'de> Deserialize<'de> for EmailBaseUrl {
 
 #[derive(Clone, serde::Deserialize)]
 pub struct EmailClientSettings {
-    pub base_url: EmailBaseUrl,
-    pub sender_email: String,
-    pub auth_token: Secret<String>,
-    pub timeout_milliseconds: u64,
+    pub host: String,
+    pub sender: String,
+    pub username: Secret<String>,
+    pub password: Secret<String>,
 }
 
 impl EmailClientSettings {
     pub fn sender(&self) -> Result<SubscriberEmail, String> {
-        SubscriberEmail::parse(self.sender_email.clone())
-    }
-
-    pub fn timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_millis(self.timeout_milliseconds)
+        SubscriberEmail::parse(self.sender.clone())
     }
 }
 

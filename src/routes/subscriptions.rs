@@ -2,6 +2,7 @@ use actix_web::{HttpResponse, ResponseError, web};
 use actix_web::http::StatusCode;
 use anyhow::Context;
 use chrono::Utc;
+use lettre::{SmtpTransport, Transport};
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -179,7 +180,7 @@ pub async fn send_confirmation_email(
     new_subscriber: NewSubscriber,
     base_url: &str,
     subscription_token: &str,
-) -> Result<(), reqwest::Error> {
+) -> Result<<SmtpTransport as Transport>::Ok, <SmtpTransport as Transport>::Error> {
     let confirmation_link = format!(
         "{}/subscriptions/confirm?subscription_token={}",
         base_url,

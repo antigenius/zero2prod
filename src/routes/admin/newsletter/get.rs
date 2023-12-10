@@ -28,7 +28,7 @@ pub async fn publish_newsletter_form(
             </head>
             <body>
                 {error_html}
-                <form action="/login" method="post">
+                <form action="/admin/newsletter" method="post">
                     <label>Title
                         <input
                             type="text"

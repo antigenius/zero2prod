@@ -39,16 +39,15 @@ pub struct Application {
 impl Application {
     pub async fn build(config: Settings) -> Result<Self, anyhow::Error> {
         let connection_pool = get_connection_pool(&config.database);
-        let sender_email = config
+        let sender = config
             .email_client
             .sender()
             .expect("Invalid sender email address.");
-        let timeout = config.email_client.timeout();
         let email_client = EmailClient::new(
-            config.email_client.base_url,
-            sender_email,
-            config.email_client.auth_token,
-            timeout,
+            sender,
+            config.email_client.username,
+            config.email_client.password,
+            config.email_client.host,
         );
         let address = format!("{}:{}", config.application.host, config.application.port);
         let listener = TcpListener::bind(address)?;
