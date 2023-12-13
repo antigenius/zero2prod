@@ -7,12 +7,14 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::IdempotencyKey;
 use crate::routes::error_chain_fmt;
-use crate::utils::{e500, see_other};
+use crate::utils::{e400, e500, see_other};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
     html_content: String,
+    idempotency_key: String,
     text_content: String,
     title: String,
 }
@@ -74,6 +76,8 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let FormData { html_content, idempotency_key, text_content, title } = form.0;
+    let _: IdempotencyKey = idempotency_key.try_into().map_err(e400)?;
     let subscribers = get_confirmed_subscribers(&pool).await.map_err(e500)?;
 
     for subscriber in subscribers {
@@ -81,9 +85,9 @@ pub async fn publish_newsletter(
             Ok(subscriber) => {
                 email_client.send_email(
                     &subscriber.email,
-                    &form.title,
-                    &form.html_content,
-                    &form.text_content,
+                    &title,
+                    &html_content,
+                    &text_content,
                 )
                 .await
                 .with_context(|| {
@@ -94,6 +98,7 @@ pub async fn publish_newsletter(
             Err(e) => {
                 tracing::warn!(
                     error.cause_chain = ?e,
+                    error.message = %e,
                     "Skipping a confirmed subscriber. \
                     Their stored contact details are invalid.",
                 )
@@ -102,5 +107,5 @@ pub async fn publish_newsletter(
     }
 
     FlashMessage::info("The newsletter issue has been published.").send();
-    Ok(see_other("/admin/newsletters"))
+    Ok(see_other("/admin/newsletter"))
 }

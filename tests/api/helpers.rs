@@ -65,6 +65,14 @@ impl TestUser {
         .await
         .expect("Failed to store test user.");
     }
+
+    pub async fn login(&self, app: &TestApp) {
+        let payload = serde_json::json!({
+            "username": &self.username,
+            "password": &self.password,
+        });
+        app.post_login(&payload).await;
+    }
 }
 
 pub struct TestApp {
@@ -164,8 +172,12 @@ impl TestApp {
         self.get_path_html("/admin/password").await
     }
 
-    pub async fn get_publish_newsletter_form(&self) -> reqwest::Response {
+    pub async fn get_publish_newsletter(&self) -> reqwest::Response {
         self.get_path("/admin/newsletter").await
+    }
+
+    pub async fn get_publish_newsletter_html(&self) -> String {
+        self.get_path_html("/admin/newsletter").await
     }
 
     pub async fn post_change_password<Body>(&self, body: &Body) -> reqwest::Response

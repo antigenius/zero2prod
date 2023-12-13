@@ -5,12 +5,14 @@ use actix_web::http::header::ContentType;
 use actix_web_flash_messages::IncomingFlashMessages;
 
 use crate::authentication::UserId;
+use crate::idempotency;
 
 
 pub async fn publish_newsletter_form(
     flash_messages: IncomingFlashMessages,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let idempotency_key = uuid::Uuid::new_v4();
     let _ = user_id.into_inner();
     let mut error_html = String::new();
 
@@ -52,6 +54,7 @@ pub async fn publish_newsletter_form(
                             name="text_content"
                         >
                     </label>
+                    <input type="hidden name="idempotency_key" value="{idempotency_key}" />
                     <button type="submit">Publish</button>
                 </form>
                 <p><a href="/admin/dashboard">&lt;- Back</a></p>
