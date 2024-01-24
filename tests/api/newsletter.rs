@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use wiremock::{Mock, ResponseTemplate};
 use wiremock::matchers::{any, method, path};
 
@@ -175,4 +177,31 @@ async fn newsletter_creation_is_idempotent() {
     let html = app.get_publish_newsletter_html().await;
 
     assert!(html.contains("<p><i>The newsletter issue has been published.</i></p>"));
+}
+
+#[tokio::test]
+async fn concurrent_submission_handled_gracefully() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let body = serde_json::json!({
+        "title": "Newsletter Title",
+        "text_content": "Newsletter body as plain text",
+        "html_content": "<p>Newsletter body as HTML</b>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
+    });
+    let response1 = app.post_newsletter(&body);
+    let response2 = app.post_newsletter(&body);
+    let (response1, response2) = tokio::join!(response1, response2);
+
+    assert_eq!(response1.status(), response2.status());
+    assert_eq!(response1.text().await.unwrap(), response2.text().await.unwrap());
 }
