@@ -5,7 +5,6 @@ use actix_web::http::header::ContentType;
 use actix_web_flash_messages::IncomingFlashMessages;
 
 use crate::authentication::UserId;
-use crate::idempotency;
 
 
 pub async fn publish_newsletter_form(
