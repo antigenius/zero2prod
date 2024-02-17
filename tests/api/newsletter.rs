@@ -1,13 +1,22 @@
 use std::time::Duration;
 
-use wiremock::{Mock, ResponseTemplate};
+use fake::Fake;
+use fake::faker::internet::en::SafeEmail;
+use fake::faker::name::en::Name;
+use wiremock::{Mock, MockBuilder, ResponseTemplate};
 use wiremock::matchers::{any, method, path};
 
 use crate::helpers::{assert_is_redirected_to, ConfirmationLinks, spawn_app, TestApp};
 
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    let name: String = Name().fake();
+    let email: String = SafeEmail().fake();
+    let body = serde_urlencoded::to_string(&serde_json::json!({
+        "name": name,
+        "email": email
+    }))
+    .unwrap();
     let _mock_guard = Mock::given(path("/email"))
         .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
@@ -36,6 +45,10 @@ async fn create_confirmed_subscriber(app: &TestApp) {
         .unwrap()
         .error_for_status()
         .unwrap();
+}
+
+fn when_sending_email() -> MockBuilder {
+    Mock::given(path("/email")).and(method("POST"))
 }
 
 #[tokio::test]
@@ -93,8 +106,7 @@ async fn newsletters_deliver_to_confirmed_subscribers() {
     create_confirmed_subscriber(&app).await;
     app.test_user.login(&app).await;
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&app.email_server)
@@ -149,8 +161,7 @@ async fn newsletter_creation_is_idempotent() {
     create_confirmed_subscriber(&app).await;
     app.test_user.login(&app).await;
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&app.email_server)
@@ -185,8 +196,7 @@ async fn concurrent_submission_handled_gracefully() {
     create_confirmed_subscriber(&app).await;
     app.test_user.login(&app).await;
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_email()
         .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
         .expect(1)
         .mount(&app.email_server)
@@ -204,4 +214,47 @@ async fn concurrent_submission_handled_gracefully() {
 
     assert_eq!(response1.status(), response2.status());
     assert_eq!(response1.text().await.unwrap(), response2.text().await.unwrap());
+}
+
+#[tokio::test]
+async fn transient_errors_do_not_duplicate_delivery_on_retry() {
+    let app = spawn_app().await;
+    let body = serde_json::json!({
+        "title": "Newsletter Title",
+        "text_content": "Newsletter body as plain text",
+        "html_content": "<p>Newsletter body as HTML</b>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
+    });
+
+    create_confirmed_subscriber(&app).await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    when_sending_email()
+        .respond_with(ResponseTemplate::new(200))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+    when_sending_email()
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let response = app.post_newsletter(&body).await;
+
+    assert_eq!(response.status().as_u16(), 500);
+
+    when_sending_email()
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .named("Delivery retry")
+        .mount(&app.email_server)
+        .await;
+    
+    let response = app.post_newsletter(&body).await;
+
+    assert_eq!(response.status().as_u16(), 303);
 }

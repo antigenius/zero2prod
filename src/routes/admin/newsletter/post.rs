@@ -2,7 +2,8 @@ use actix_web::{HttpResponse, ResponseError, web};
 use actix_web::http::StatusCode;
 use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
+use uuid::Uuid;
 
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
@@ -145,4 +146,36 @@ pub async fn publish_newsletter(
 
 fn success_message() -> FlashMessage {
     FlashMessage::info("The newsletter issue has been published.")
+}
+
+#[tracing::instrument(skip_all)]
+async fn insert_newsletter_issue(
+    transaction: &mut Transaction<'_, Postgres>,
+    title: &str,
+    text_content: &str,
+    html_content: &str,
+) -> Result<Uuid, sqlx::Error> {
+    let id = Uuid::new_v4();
+
+    sqlx::query!(
+        r#"
+        INSERT INTO newsletter_issues
+        (
+            id,
+            title,
+            text_content,
+            html_content,
+            published_at
+        )
+        VALUES ($1, $2, $3, $4, now())
+        "#,
+        id,
+        title,
+        text_content,
+        html_content
+    )
+    .execute(transaction)
+    .await?;
+
+    Ok(id)
 }
