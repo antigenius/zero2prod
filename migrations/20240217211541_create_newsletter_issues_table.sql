@@ -1,4 +1,4 @@
-CREATE TABLE newsletter_issues (
+CREATE TABLE newsletter_issue (
     id uuid NOT NULL,
     title TEXT NOT NULL,
     text_content TEXT NOT NULL,
