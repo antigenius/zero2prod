@@ -199,7 +199,7 @@ pub async fn send_confirmation_email(
         .send_email(
             &new_subscriber.email,
             "Welcome!",
-            &html_body,
+            html_body,
             &text_body
         )
         .await

@@ -97,7 +97,9 @@ async fn newsletters_not_deliever_to_unconfirmed_subscribers() {
     assert_is_redirected_to(&response, "/admin/newsletter");
 
     let html = app.get_publish_newsletter_html().await;
-    assert!(html.contains("<p><i>The newsletter issue has been published.</i></p>"));
+    assert!(html.contains("<p><i>The newsletter issue has been accepted - \
+    emails will go out shortly.</i></p>"));
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -122,7 +124,9 @@ async fn newsletters_deliver_to_confirmed_subscribers() {
     assert_is_redirected_to(&response, "/admin/newsletter");
 
     let html = app.get_publish_newsletter_html().await;
-    assert!(html.contains("<p><i>The newsletter issue has been published.</i></p>"));
+    assert!(html.contains("<p><i>The newsletter issue has been accepted - \
+    emails will go out shortly.</i></p>"));
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -179,7 +183,8 @@ async fn newsletter_creation_is_idempotent() {
 
     let html = app.get_publish_newsletter_html().await;
     
-    assert!(html.contains("<p><i>The newsletter issue has been published.</i></p>"));
+    assert!(html.contains("<p><i>The newsletter issue has been accepted - \
+    emails will go out shortly.</i></p>"));
 
     let response = app.post_newsletter(&body).await;
     
@@ -187,7 +192,10 @@ async fn newsletter_creation_is_idempotent() {
 
     let html = app.get_publish_newsletter_html().await;
 
-    assert!(html.contains("<p><i>The newsletter issue has been published.</i></p>"));
+    assert!(html.contains("<p><i>The newsletter issue has been accepted - \
+    emails will go out shortly.</i></p>"));
+
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -214,47 +222,6 @@ async fn concurrent_submission_handled_gracefully() {
 
     assert_eq!(response1.status(), response2.status());
     assert_eq!(response1.text().await.unwrap(), response2.text().await.unwrap());
-}
 
-#[tokio::test]
-async fn transient_errors_do_not_duplicate_delivery_on_retry() {
-    let app = spawn_app().await;
-    let body = serde_json::json!({
-        "title": "Newsletter Title",
-        "text_content": "Newsletter body as plain text",
-        "html_content": "<p>Newsletter body as HTML</b>",
-        "idempotency_key": uuid::Uuid::new_v4().to_string(),
-    });
-
-    create_confirmed_subscriber(&app).await;
-    create_confirmed_subscriber(&app).await;
-    app.test_user.login(&app).await;
-
-    when_sending_email()
-        .respond_with(ResponseTemplate::new(200))
-        .up_to_n_times(1)
-        .expect(1)
-        .mount(&app.email_server)
-        .await;
-    when_sending_email()
-        .respond_with(ResponseTemplate::new(500))
-        .up_to_n_times(1)
-        .expect(1)
-        .mount(&app.email_server)
-        .await;
-
-    let response = app.post_newsletter(&body).await;
-
-    assert_eq!(response.status().as_u16(), 500);
-
-    when_sending_email()
-        .respond_with(ResponseTemplate::new(200))
-        .expect(1)
-        .named("Delivery retry")
-        .mount(&app.email_server)
-        .await;
-    
-    let response = app.post_newsletter(&body).await;
-
-    assert_eq!(response.status().as_u16(), 303);
+    app.dispatch_all_pending_emails().await;
 }

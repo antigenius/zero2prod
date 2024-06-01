@@ -70,7 +70,7 @@ pub async fn validate_credentials(
 
     if let Some((stored_user_id, stored_hash)) = get_stored_credentials(
         &credentials.username,
-        &pool
+        pool
     )
     .await?
     {
@@ -100,7 +100,7 @@ fn verify_password_hash(
     expected_hash: Secret<String>,
     password_candidate: Secret<String>,
 ) -> Result<(), AuthError> {
-    let expected_hash = PasswordHash::new(&expected_hash.expose_secret())
+    let expected_hash = PasswordHash::new(expected_hash.expose_secret())
         .context("Failed to parse PHC format hash string.")?;
 
     Argon2::default()
@@ -150,7 +150,7 @@ fn compute_password_hash(password: Secret<String>) -> Result<Secret<String>, any
         Version::V0x13,
         Params::new(15000, 2, 1, None).unwrap(),
     )
-    .hash_password(&password.expose_secret().as_bytes(), &salt)?
+    .hash_password(password.expose_secret().as_bytes(), &salt)?
     .to_string();
     Ok(Secret::new(hash))
 }
